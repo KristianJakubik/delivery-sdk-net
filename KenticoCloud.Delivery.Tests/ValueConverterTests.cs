@@ -6,6 +6,10 @@ using NodaTime;
 using Xunit;
 using RichardSzalay.MockHttp;
 using System.IO;
+using FakeItEasy;
+using KenticoCloud.Delivery.InlineContentItems;
+using KenticoCloud.Delivery.ResiliencePolicy;
+using Microsoft.Extensions.Options;
 
 namespace KenticoCloud.Delivery.Tests
 {
@@ -101,10 +105,18 @@ namespace KenticoCloud.Delivery.Tests
         private DeliveryClient InitializeDeliveryClient(MockHttpMessageHandler mockHttp)
         {
             var httpClient = mockHttp.ToHttpClient();
-            DeliveryClient client = new DeliveryClient(guid)
+            var contentLinkUrlResolver = A.Fake<IContentLinkUrlResolver>();
+            var resiliencePolicyProvider = A.Fake<IResiliencePolicyProvider>();
+            var deliveryOptions = new OptionsWrapper<DeliveryOptions>(new DeliveryOptions { ProjectId = guid });
+            var codeFirstModelProvider = new CodeFirstModelProvider(
+                contentLinkUrlResolver,
+                null,
+                new CustomTypeProvider(),
+                new CodeFirstPropertyMapper()
+            );
+            var client = new DeliveryClient(deliveryOptions, null, null, codeFirstModelProvider, resiliencePolicyProvider)
             {
-                CodeFirstModelProvider = { TypeProvider = new CustomTypeProvider() },
-                HttpClient = httpClient
+                HttpClient = httpClient,
             };
 
             return client;
