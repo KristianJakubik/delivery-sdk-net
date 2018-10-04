@@ -17,20 +17,20 @@ namespace KenticoCloud.Delivery
     /// </summary>
     public sealed class DeliveryClient : IDeliveryClient
     {
-        private readonly DeliveryOptions _deliveryOptions;
-        private readonly IContentLinkUrlResolver _contentLinkUrlResolver;
-        private readonly IInlineContentItemsProcessor _inlineContentItemsProcessor;
-        private readonly ICodeFirstModelProvider _codeFirstModelProvider;
-        private ICodeFirstTypeProvider _codeFirstTypeProvider;
-        private readonly ICodeFirstPropertyMapper _codeFirstPropertyMapper;
-        private readonly IResiliencePolicyProvider _resiliencePolicyProvider;
+        internal readonly DeliveryOptions DeliveryOptions;
+        internal readonly IContentLinkUrlResolver ContentLinkUrlResolver;
+        internal readonly IInlineContentItemsProcessor InlineContentItemsProcessor;
+        internal readonly ICodeFirstModelProvider CodeFirstModelProvider;
+        internal readonly ICodeFirstTypeProvider CodeFirstTypeProvider;
+        internal readonly ICodeFirstPropertyMapper CodeFirstPropertyMapper;
+        internal readonly IResiliencePolicyProvider ResiliencePolicyProvider;
 
         private HttpClient _httpClient;
         private DeliveryEndpointUrlBuilder _urlBuilder;
 
         private DeliveryEndpointUrlBuilder UrlBuilder
         {
-            get { return _urlBuilder ?? (_urlBuilder = new DeliveryEndpointUrlBuilder(_deliveryOptions)); }
+            get { return _urlBuilder ?? (_urlBuilder = new DeliveryEndpointUrlBuilder(DeliveryOptions)); }
         }
 
         /// <summary>
@@ -66,53 +66,53 @@ namespace KenticoCloud.Delivery
         /// <param name="deliveryOptions">The settings of the Kentico Cloud project.</param>
         internal DeliveryClient(DeliveryOptions deliveryOptions)
         {
-            _deliveryOptions = deliveryOptions ?? throw new ArgumentNullException(nameof(deliveryOptions), "The Delivery options object is not specified.");
+            DeliveryOptions = deliveryOptions ?? throw new ArgumentNullException(nameof(deliveryOptions), "The Delivery options object is not specified.");
 
-            if (_deliveryOptions.ProjectId == null)
+            if (DeliveryOptions.ProjectId == null)
             {
-                throw new ArgumentNullException(nameof(_deliveryOptions.ProjectId), "Kentico Cloud project identifier is not specified.");
+                throw new ArgumentNullException(nameof(DeliveryOptions.ProjectId), "Kentico Cloud project identifier is not specified.");
             }
 
-            if (_deliveryOptions.ProjectId == string.Empty)
+            if (DeliveryOptions.ProjectId == string.Empty)
             {
-                throw new ArgumentException("Kentico Cloud project identifier is not specified.", nameof(_deliveryOptions.ProjectId));
+                throw new ArgumentException("Kentico Cloud project identifier is not specified.", nameof(DeliveryOptions.ProjectId));
             }
 
-            if (!Guid.TryParse(_deliveryOptions.ProjectId, out Guid projectIdGuid))
+            if (!Guid.TryParse(DeliveryOptions.ProjectId, out Guid projectIdGuid))
             {
-                throw new ArgumentException("Provided string is not a valid project identifier ({ProjectId}). Haven't you accidentally passed the Preview API key instead of the project identifier?", nameof(_deliveryOptions.ProjectId));
+                throw new ArgumentException("Provided string is not a valid project identifier ({ProjectId}). Haven't you accidentally passed the Preview API key instead of the project identifier?", nameof(DeliveryOptions.ProjectId));
             }
 
-            if (_deliveryOptions.UsePreviewApi)
+            if (DeliveryOptions.UsePreviewApi)
             {
-                if (_deliveryOptions.PreviewApiKey == null)
+                if (DeliveryOptions.PreviewApiKey == null)
                 {
-                    throw new ArgumentNullException(nameof(_deliveryOptions.PreviewApiKey), "The Preview API key is not specified.");
+                    throw new ArgumentNullException(nameof(DeliveryOptions.PreviewApiKey), "The Preview API key is not specified.");
                 }
 
-                if (_deliveryOptions.PreviewApiKey == string.Empty)
+                if (DeliveryOptions.PreviewApiKey == string.Empty)
                 {
-                    throw new ArgumentException("The Preview API key is not specified.", nameof(_deliveryOptions.PreviewApiKey));
+                    throw new ArgumentException("The Preview API key is not specified.", nameof(DeliveryOptions.PreviewApiKey));
                 }
             }
 
-            _deliveryOptions.ProjectId = projectIdGuid.ToString("D");
+            DeliveryOptions.ProjectId = projectIdGuid.ToString("D");
 
-            if (_inlineContentItemsProcessor == null)
+            if (InlineContentItemsProcessor == null)
             {
                 var unretrievedInlineContentItemsResolver = new ReplaceWithWarningAboutUnretrievedItemResolver();
                 var defaultInlineContentItemsResolver = new ReplaceWithWarningAboutRegistrationResolver();
-                _inlineContentItemsProcessor = new InlineContentItemsProcessor(defaultInlineContentItemsResolver, unretrievedInlineContentItemsResolver);
+                InlineContentItemsProcessor = new InlineContentItemsProcessor(defaultInlineContentItemsResolver, unretrievedInlineContentItemsResolver);
             }
 
-            if (_codeFirstModelProvider == null)
+            if (CodeFirstModelProvider == null)
             {
-                _codeFirstModelProvider = new CodeFirstModelProvider(_contentLinkUrlResolver, _inlineContentItemsProcessor, _codeFirstTypeProvider, _codeFirstPropertyMapper);
+                CodeFirstModelProvider = new CodeFirstModelProvider(ContentLinkUrlResolver, InlineContentItemsProcessor, CodeFirstTypeProvider, CodeFirstPropertyMapper);
             }
 
-            if (_resiliencePolicyProvider == null)
+            if (ResiliencePolicyProvider == null)
             {
-                _resiliencePolicyProvider = new DefaultResiliencePolicyProvider(_deliveryOptions.MaxRetryAttempts);
+                ResiliencePolicyProvider = new DefaultResiliencePolicyProvider(DeliveryOptions.MaxRetryAttempts);
             }
         }
 
@@ -134,12 +134,12 @@ namespace KenticoCloud.Delivery
             ICodeFirstPropertyMapper codeFirstPropertyMapper = null
         ): this(deliveryOptions.Value)
         {
-            _contentLinkUrlResolver = contentLinkUrlResolver;
-            _inlineContentItemsProcessor = contentItemsProcessor;
-            _codeFirstModelProvider = codeFirstModelProvider;
-            _resiliencePolicyProvider = retryPolicyProvider;
-            _codeFirstTypeProvider = codeFirstTypeProvider;
-            _codeFirstPropertyMapper = codeFirstPropertyMapper;
+            ContentLinkUrlResolver = contentLinkUrlResolver;
+            InlineContentItemsProcessor = contentItemsProcessor;
+            CodeFirstModelProvider = codeFirstModelProvider;
+            ResiliencePolicyProvider = retryPolicyProvider;
+            CodeFirstTypeProvider = codeFirstTypeProvider;
+            CodeFirstPropertyMapper = codeFirstPropertyMapper;
         }
 
         /// <summary>
@@ -229,7 +229,7 @@ namespace KenticoCloud.Delivery
             var endpointUrl = UrlBuilder.GetItemUrl(codename, parameters);
             var response = await GetDeliverResponseAsync(endpointUrl);
 
-            return new DeliveryItemResponse(response, _codeFirstModelProvider, _contentLinkUrlResolver, endpointUrl);
+            return new DeliveryItemResponse(response, CodeFirstModelProvider, ContentLinkUrlResolver, endpointUrl);
         }
 
         /// <summary>
@@ -249,7 +249,7 @@ namespace KenticoCloud.Delivery
             var endpointUrl = UrlBuilder.GetItemUrl(codename, parameters);
             var response = await GetDeliverResponseAsync(endpointUrl);
 
-            return new DeliveryItemResponse<T>(response, _codeFirstModelProvider, endpointUrl);
+            return new DeliveryItemResponse<T>(response, CodeFirstModelProvider, endpointUrl);
         }
 
         /// <summary>
@@ -272,7 +272,7 @@ namespace KenticoCloud.Delivery
             var endpointUrl = UrlBuilder.GetItemsUrl(parameters);
             var response = await GetDeliverResponseAsync(endpointUrl);
 
-            return new DeliveryItemListingResponse(response, _codeFirstModelProvider, _contentLinkUrlResolver, endpointUrl);
+            return new DeliveryItemListingResponse(response, CodeFirstModelProvider, ContentLinkUrlResolver, endpointUrl);
         }
 
         /// <summary>
@@ -298,7 +298,7 @@ namespace KenticoCloud.Delivery
             var endpointUrl = UrlBuilder.GetItemsUrl(enhancedParameters);
             var response = await GetDeliverResponseAsync(endpointUrl);
 
-            return new DeliveryItemListingResponse<T>(response, _codeFirstModelProvider, endpointUrl);
+            return new DeliveryItemListingResponse<T>(response, CodeFirstModelProvider, endpointUrl);
         }
 
         /// <summary>
@@ -500,15 +500,15 @@ namespace KenticoCloud.Delivery
 
         private async Task<JObject> GetDeliverResponseAsync(string endpointUrl)
         {
-            if (_deliveryOptions.UsePreviewApi && _deliveryOptions.UseSecuredProductionApi)
+            if (DeliveryOptions.UsePreviewApi && DeliveryOptions.UseSecuredProductionApi)
             {
                 throw new InvalidOperationException("Preview API and secured Delivery API must not be configured at the same time.");
             }
 
-            if (_deliveryOptions.EnableResilienceLogic)
+            if (DeliveryOptions.EnableResilienceLogic)
             {
                 // Use the resilience logic.
-                var policyResult = await _resiliencePolicyProvider.Policy?.ExecuteAndCaptureAsync(() =>
+                var policyResult = await ResiliencePolicyProvider.Policy?.ExecuteAndCaptureAsync(() =>
                     {
                         return SendHttpMessage(endpointUrl);
                     }
@@ -525,19 +525,19 @@ namespace KenticoCloud.Delivery
 
             message.Headers.AddSdkTrackingHeader();
 
-            if (_deliveryOptions.WaitForLoadingNewContent)
+            if (DeliveryOptions.WaitForLoadingNewContent)
             {
                 message.Headers.AddWaitForLoadingNewContentHeader();
             }
 
             if (UseSecuredProductionApi())
             {
-                message.Headers.AddAuthorizationHeader("Bearer", _deliveryOptions.SecuredProductionApiKey);
+                message.Headers.AddAuthorizationHeader("Bearer", DeliveryOptions.SecuredProductionApiKey);
             }
 
             if (UsePreviewApi())
             {
-                message.Headers.AddAuthorizationHeader("Bearer", _deliveryOptions.PreviewApiKey);
+                message.Headers.AddAuthorizationHeader("Bearer", DeliveryOptions.PreviewApiKey);
             }
 
             return HttpClient.SendAsync(message);
@@ -545,12 +545,12 @@ namespace KenticoCloud.Delivery
 
         private bool UseSecuredProductionApi()
         {
-            return _deliveryOptions.UseSecuredProductionApi && !string.IsNullOrEmpty(_deliveryOptions.SecuredProductionApiKey);
+            return DeliveryOptions.UseSecuredProductionApi && !string.IsNullOrEmpty(DeliveryOptions.SecuredProductionApiKey);
         }
 
         private bool UsePreviewApi()
         {
-            return _deliveryOptions.UsePreviewApi && !string.IsNullOrEmpty(_deliveryOptions.PreviewApiKey);
+            return DeliveryOptions.UsePreviewApi && !string.IsNullOrEmpty(DeliveryOptions.PreviewApiKey);
         }
 
         private async Task<JObject> GetResponseContent(HttpResponseMessage httpResponseMessage)
@@ -579,7 +579,7 @@ namespace KenticoCloud.Delivery
                 ? new List<IQueryParameter>(parameters)
                 : new List<IQueryParameter>();
 
-            var codename = _codeFirstModelProvider.GetTypeProvider().GetCodename(typeof(T));
+            var codename = CodeFirstTypeProvider.GetCodename(typeof(T));
 
             if (codename != null && !IsTypeInQueryParameters(parameters))
             {

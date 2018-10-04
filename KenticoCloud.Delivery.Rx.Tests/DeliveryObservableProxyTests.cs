@@ -5,6 +5,7 @@ using System.Linq;
 using System.Reactive.Linq;
 using FakeItEasy;
 using KenticoCloud.Delivery.InlineContentItems;
+using KenticoCloud.Delivery.ResiliencePolicy;
 using Microsoft.Extensions.Options;
 using RichardSzalay.MockHttp;
 using Xunit;
@@ -219,12 +220,13 @@ namespace KenticoCloud.Delivery.Rx.Tests
             var contentPropertyMapper =  new CodeFirstPropertyMapper();
             var contentTypeProvider = new CustomTypeProvider();
             var codeFirstModelProvider = new CodeFirstModelProvider(contentLinkUrlResolver, contentItemsProcessor, contentTypeProvider, contentPropertyMapper);
+            var resiliencePolicyProvider = A.Fake<IResiliencePolicyProvider>();
             var client = new DeliveryClient(
                 deliveryOptions, 
                 contentLinkUrlResolver, 
                 null,
                 codeFirstModelProvider,
-                null,
+                resiliencePolicyProvider,
                 contentTypeProvider
             )
             {

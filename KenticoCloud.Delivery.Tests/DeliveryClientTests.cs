@@ -752,8 +752,9 @@ namespace KenticoCloud.Delivery.Tests
                 .Respond("application/json", File.ReadAllText(Path.Combine(Environment.CurrentDirectory, "Fixtures\\DeliveryClient\\items.json")));
 
             var mockHttpClient = _mockHttp.ToHttpClient();
+            var resiliencePolicyProvider = A.Fake<IResiliencePolicyProvider>();
 
-            var client = new DeliveryClient(options)
+            var client = new DeliveryClient(new OptionsWrapper<DeliveryOptions>(options), null, null, null, resiliencePolicyProvider)
             {
                 HttpClient = mockHttpClient
             };
@@ -765,19 +766,24 @@ namespace KenticoCloud.Delivery.Tests
         [Fact]
         public async void Retries_WithDefaultSettings_Retries()
         {
-            int actualHttpRequestCount = 0;
+            var actualHttpRequestCount = 0;
+            var retryAttempts = 4;
+            var expectedRetryAttempts = retryAttempts + 1;
 
             _mockHttp.When($"{_baseUrl}/items")
                 .Respond((request) => GetResponseAndLogRequest(HttpStatusCode.RequestTimeout, ref actualHttpRequestCount));
             var httpClient = _mockHttp.ToHttpClient();
+            var resiliencePolicyProvider = A.Fake<IResiliencePolicyProvider>();
+            A.CallTo(() => resiliencePolicyProvider.Policy)
+                .Returns(Policy.HandleResult<HttpResponseMessage>(result => true).RetryAsync(retryAttempts));
 
-            var client = new DeliveryClient(_guid)
+            var client = new DeliveryClient(new OptionsWrapper<DeliveryOptions>(new DeliveryOptions{ProjectId = _guid}), null, null, null, resiliencePolicyProvider)
             {
                 HttpClient = httpClient
             };
 
             await Assert.ThrowsAsync<DeliveryException>(async () => await client.GetItemsAsync());
-            Assert.Equal(6, actualHttpRequestCount);
+            Assert.Equal(expectedRetryAttempts, actualHttpRequestCount);
         }
 
         [Fact]
@@ -813,13 +819,16 @@ namespace KenticoCloud.Delivery.Tests
             _mockHttp.When($"{_baseUrl}/items")
                 .Respond((request) => GetResponseAndLogRequest(HttpStatusCode.RequestTimeout, ref actualHttpRequestCount));
             var httpClient = _mockHttp.ToHttpClient();
+            var resiliencePolicyProvider = A.Fake<IResiliencePolicyProvider>();
+            A.CallTo(() => resiliencePolicyProvider.Policy)
+                .Returns(Policy.HandleResult<HttpResponseMessage>(result => true).RetryAsync(retryAttempts));
 
-            var deliveryOptions = new DeliveryOptions()
+            var deliveryOptions = new DeliveryOptions
             {
                 ProjectId = _guid,
                 MaxRetryAttempts = retryAttempts
             };
-            var client = new DeliveryClient(deliveryOptions)
+            var client = new DeliveryClient(new OptionsWrapper<DeliveryOptions>(deliveryOptions), null, null, null, resiliencePolicyProvider)
             {
                 HttpClient = httpClient
             };
