@@ -39,17 +39,19 @@ namespace KenticoCloud.Delivery
 
         private class Steps : IMandatoryStep, IOptionalStep
         {
-            private IContentLinkUrlResolver _contentLinkUrlResolver;
-            private IInlineContentItemsProcessor _inlineContentItemsProcessor;
-            private ICodeFirstModelProvider _codeFirstModelProvider;
-            private IResiliencePolicyProvider _resiliencePolicyProvider;
-            private ICodeFirstTypeProvider _codeFirstTypeProvider;
-            private ICodeFirstPropertyMapper _codeFirstPropertyMapper;
+            private readonly Container _container;
             private HttpClient _httpClient;
             private DeliveryOptions _deliveryOptions;
+
+            public Steps()
+            {
+                _container = new Container();
+            }
+
             public IOptionalStep WithProjectId(string projectId)
             {
                 Validation.ValidateProjectId(projectId);
+
                 _deliveryOptions = new DeliveryOptions {ProjectId = projectId};
 
                 return this;
@@ -81,78 +83,90 @@ namespace KenticoCloud.Delivery
 
             public IOptionalStep WithContentLinkUrlResolver(IContentLinkUrlResolver contentLinkUrlResolver)
             {
-                _contentLinkUrlResolver = contentLinkUrlResolver;
-
+                if (contentLinkUrlResolver != null)
+                {
+                    _container.TryAdd<IContentLinkUrlResolver>(contentLinkUrlResolver);
+                }
+                
                 return this;
             }
 
             public IOptionalStep WithInlineContentItemsProcessor(IInlineContentItemsProcessor inlineContentItemsProcessor)
             {
-                _inlineContentItemsProcessor = inlineContentItemsProcessor;
+                if (inlineContentItemsProcessor != null)
+                {
+                    _container.TryAdd<IInlineContentItemsProcessor>(inlineContentItemsProcessor);
+                }
 
                 return this;
             }
 
             public IOptionalStep WithCodeFirstModelProvider(ICodeFirstModelProvider codeFirstModelProvider)
             {
-                _codeFirstModelProvider = codeFirstModelProvider;
+                if (codeFirstModelProvider != null)
+                {
+                    _container.TryAdd<ICodeFirstModelProvider>(codeFirstModelProvider);
+                }
 
                 return this;
             }
 
             public IOptionalStep WithCodeFirstTypeProvider(ICodeFirstTypeProvider codeFirstTypeProvider)
             {
-                _codeFirstTypeProvider = codeFirstTypeProvider;
+                if (codeFirstTypeProvider != null)
+                {
+                    _container.TryAdd<ICodeFirstTypeProvider>(codeFirstTypeProvider);
+                }
 
                 return this;
             }
 
             public IOptionalStep WithResiliencePolicyProvider(IResiliencePolicyProvider resiliencePolicyProvider)
             {
-                _resiliencePolicyProvider = resiliencePolicyProvider;
+                if (resiliencePolicyProvider != null)
+                {
+                    _container.TryAdd<IResiliencePolicyProvider>(resiliencePolicyProvider);
+                }
 
                 return this;
             }
 
             public IOptionalStep WithCodeFirstPropertyMapper(ICodeFirstPropertyMapper propertyMapper)
             {
-                _codeFirstPropertyMapper = propertyMapper;
+                if (propertyMapper != null)
+                {
+                    _container.TryAdd<ICodeFirstPropertyMapper>(propertyMapper);
+                }
 
                 return this;
             }
 
             public IDeliveryClient Build()
             {
-                var deliveryOptionsWrapper = new OptionsWrapper<DeliveryOptions>(_deliveryOptions);
+                _container.TryAdd<IOptions<DeliveryOptions>>(new OptionsWrapper<DeliveryOptions>(_deliveryOptions));
+                _container.RegisterAllDependencies();
 
-                var inlineContentItemsProcessor =
-                    _inlineContentItemsProcessor ??
-                    new InlineContentItemsProcessor(
-                        new ReplaceWithWarningAboutRegistrationResolver(),
-                        new ReplaceWithWarningAboutUnretrievedItemResolver()
-                    );
-                var codeFirstModelProvider =
-                    _codeFirstModelProvider ??
-                    new CodeFirstModelProvider(
-                        _contentLinkUrlResolver,
-                        inlineContentItemsProcessor,
-                        _codeFirstTypeProvider,
-                        _codeFirstPropertyMapper
-                    );
+                var deliveryOptions = _container.GetService<IOptions<DeliveryOptions>>();
+                var inlineContentItemsProcessor = _container.GetService<IInlineContentItemsProcessor>();
+                var codeFirstModelProvider = _container.GetService<ICodeFirstModelProvider>();
+                var contentLinkUrlResolver = _container.GetService<IContentLinkUrlResolver>();
+                var codeFirstTypeProvider = _container.GetService<ICodeFirstTypeProvider>();
+                var resiliencePolicyProvider = _container.GetService<IResiliencePolicyProvider>();
+                var codeFirstPropertyMapper = _container.GetService<ICodeFirstPropertyMapper>();
 
                 return new DeliveryClient(
-                    deliveryOptionsWrapper,
-                    _contentLinkUrlResolver,
+                    deliveryOptions,
+                    contentLinkUrlResolver,
                     inlineContentItemsProcessor,
                     codeFirstModelProvider,
-                    _resiliencePolicyProvider,
-                    _codeFirstTypeProvider,
-                    _codeFirstPropertyMapper
+                    resiliencePolicyProvider,
+                    codeFirstTypeProvider,
+                    codeFirstPropertyMapper
                 )
                 {
                     HttpClient = _httpClient
                 };
-            } 
+            }
         }
     }
 
